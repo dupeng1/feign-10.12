@@ -35,8 +35,15 @@ import static feign.ExceptionPropagationPolicy.NONE;
  * In implementation, Feign is a {@link Feign#newInstance factory} for generating {@link Target
  * targeted} http apis.
  */
+
+/**
+ * Feign的目的是简化针对rest的Http Api的开发
+ * 在实现中，Feign是一个用于生成目标实例Feign.newInstance()的工厂，这个生成的实例便是接口的代理对象。
+ * 它有且仅有一个唯一实现类ReflectiveFeign，但这个实现类并不面向使用者，使用者只需用Builder构建，面向接口/抽象类编程足矣。
+ */
 public abstract class Feign {
 
+  // Feign的实例统一，有且只能通过builder构建
   public static Builder builder() {
     return new Builder();
   }
@@ -67,6 +74,9 @@ public abstract class Feign {
    * @param method invoked method, present on {@code type} or its super.
    * @see MethodMetadata#configKey()
    */
+  // -----------------静态方法-----------------
+  // 工具方法，生成configKey
+  // MethodMetadata#configKey属性的值就来自于此方法
   public static String configKey(Class targetType, Method method) {
     StringBuilder builder = new StringBuilder();
     builder.append(targetType.getSimpleName());
@@ -93,6 +103,7 @@ public abstract class Feign {
    * Returns a new instance of an HTTP API, defined by annotations in the {@link Feign Contract},
    * for the specified {@code target}. You should cache this result.
    */
+  // 唯一的public的抽象方法，用于为目标target创建一个代理对象实例
   public abstract <T> T newInstance(Target<T> target);
 
   public static class Builder {

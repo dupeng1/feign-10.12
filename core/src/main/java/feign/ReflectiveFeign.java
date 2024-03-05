@@ -28,7 +28,9 @@ import feign.template.UriUtils;
 
 public class ReflectiveFeign extends Feign {
 
+  // 文上有解释次类的作用：提供方法，给接口每个方法生成一个处理器
   private final ParseHandlersByName targetToHandlersByName;
+  // 它是调度中心
   private final InvocationHandlerFactory factory;
   private final QueryMapEncoder queryMapEncoder;
 
@@ -46,10 +48,14 @@ public class ReflectiveFeign extends Feign {
   @SuppressWarnings("unchecked")
   @Override
   public <T> T newInstance(Target<T> target) {
+    // 拿到该接口所有方法对应的处理器的Map
     Map<String, MethodHandler> nameToHandler = targetToHandlersByName.apply(target);
+    // 真要处理调用的Method对应的处理器Map
     Map<Method, MethodHandler> methodToHandler = new LinkedHashMap<Method, MethodHandler>();
+    // 简单的说：对接口默认方法作为处理方法提供支持，不用发http请求喽，一般可忽略
     List<DefaultMethodHandler> defaultMethodHandlers = new LinkedList<DefaultMethodHandler>();
-
+    // 查阅该接口所有的Method。
+    // .getMethods()会获取接口的所有的public方法，包括default方法哦（因为defualt方法也是public的）
     for (Method method : target.type().getMethods()) {
       if (method.getDeclaringClass() == Object.class) {
         continue;
@@ -120,14 +126,34 @@ public class ReflectiveFeign extends Feign {
     }
   }
 
+  /**
+   * 该类有且仅提供一个方法：将feign.Target转为Map<String, MethodHandler>，
+   * 就是说为每一个configKey（其实就是一个Method），找到一个处理它的MethodHandler。
+   * 我们传入Target（封装了我们的模拟接口，要访问的域名），返回这个接口下的各个方法，对应的执行HTTP请求需要的一系列信息
+   * 结果Map<String, MethodHandler>的key是这个接口中的方法名字，MethodHandler则是包含此方法执行需要的各种信息。
+   *
+   * 内部几个组件：准备一个http请求执行前的各种数据，定义http执行后对于结果的各种处理逻辑。
+   * 所以这些组件的作用是 “处理每个HTTP执行前后的事情”
+   *
+   * 准备好执行这个HTTP请求所需要的一切，为指定接口类型的每个方法生成其对应的MethodHandler处理器
+   *
+   * 涉及到元数据提取、编码、模版数据填充等动作，均交给不同的组件去完成，组件化的设计有助于模块化、可插拔等特性。
+   */
   static final class ParseHandlersByName {
-
+    //作用是将我们传入的接口进行解析验证，看注解的使用是否符合规范，
+    // 然后返回给我们接口上各种相应的元数据。所以叫合约。详见：https://www.jianshu.com/p/6582f8319f72
     private final Contract contract;
+    //封装Request请求的 连接超时=默认10s ，读取超时=默认60s
     private final Options options;
+    //怎么把我们的请求编码
     private final Encoder encoder;
+    //怎么把我们执行HTTP请求后得到的结果解码为我们定义的类型
     private final Decoder decoder;
+    //怎么在我们执行HTTP请求后得到的错误(既不是2xx的状态码)解码为我们定义的类型
     private final ErrorDecoder errorDecoder;
     private final QueryMapEncoder queryMapEncoder;
+    // 产生SynchronousMethodHandler实例的工厂，SynchronousMethodHandler实例执行HTTP请求
+    // 从这也很好理解：所有的Method最终的处理器都是SynchronousMethodHandler
     private final SynchronousMethodHandler.Factory factory;
 
     ParseHandlersByName(
@@ -147,20 +173,31 @@ public class ReflectiveFeign extends Feign {
       this.decoder = checkNotNull(decoder, "decoder");
     }
 
+    //ParseHandlersByName最后把以上的组件都封装为了一个结果集Map<String, MethodHandler>
     public Map<String, MethodHandler> apply(Target target) {
+      // 通过Contract提取出该类所有方法的元数据信息：MethodMetadata
+      // 它会解析注解，不同的实现支持的注解是不一样的
       List<MethodMetadata> metadata = contract.parseAndValidateMetadata(target.type());
+      // 一个方法一个方法的处理，生成器对应的MethodHandler处理器
+      // 上篇文章有讲过，元数据都是交给RequestTemplate.Factory去构建成为一个请求模版的
       Map<String, MethodHandler> result = new LinkedHashMap<String, MethodHandler>();
       for (MethodMetadata md : metadata) {
+        // 这里其实我觉得使用接口RequestTemplate.Factory buildTemplate更加的合适
         BuildTemplateByResolvingArgs buildTemplate;
+        // 针对不同元数据参数，调用不同的RequestTemplate.Factory实现类完成处理
         if (!md.formParams().isEmpty() && md.template().bodyTemplate() == null) {
+          // 若存在表单参数formParams，并且没有body模版，说明请求的参数就是简单的Query参数。那就执行表单形式的构建
           buildTemplate =
               new BuildFormEncodedTemplateFromArgs(md, encoder, queryMapEncoder, target);
         } else if (md.bodyIndex() != null) {
+          // 若存在body，那就是body喽
           buildTemplate = new BuildEncodedTemplateFromArgs(md, encoder, queryMapEncoder, target);
         } else {
+          // 否则就是普通形式：查询参数构建方式
           buildTemplate = new BuildTemplateByResolvingArgs(md, queryMapEncoder, target);
         }
         if (md.isIgnored()) {
+          // 通过factory.create创建出MethodHandler实例，缓存结果
           result.put(md.configKey(), args -> {
             throw new IllegalStateException(md.configKey() + " is not a method handled by feign");
           });
