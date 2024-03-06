@@ -33,23 +33,42 @@ import static feign.Util.*;
  * information also support template expressions.
  * </p>
  */
+
+/**
+ * 请求模板类
+ * 包含了HTTP请求的相关信息，如请求URL、请求方法、请求头、请求体等
+ */
 @SuppressWarnings("UnusedReturnValue")
 public final class RequestTemplate implements Serializable {
 
   private static final Pattern QUERY_STRING_PATTERN = Pattern.compile("(?<!\\{)\\?");
+  // 查询模板
   private final Map<String, QueryTemplate> queries = new LinkedHashMap<>();
+  // 消息头模板
   private final Map<String, HeaderTemplate> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+  // 请求的目标地址
   private String target;
+  // URL 后面的片段
   private String fragment;
+  // 是否已解析
   private boolean resolved = false;
+  // URI 模板
   private UriTemplate uriTemplate;
+  // 请求体模板
   private BodyTemplate bodyTemplate;
+  // 请求方式
   private HttpMethod method;
+  // 字符集
   private transient Charset charset = Util.UTF_8;
+  // 请求体
   private Request.Body body = Request.Body.empty();
+  // 是否斜杠转义
   private boolean decodeSlash = true;
+  // 集合格式化
   private CollectionFormat collectionFormat = CollectionFormat.EXPLODED;
+  // 方法元数据
   private MethodMetadata methodMetadata;
+  // 代理的目标对象
   private Target<?> feignTarget;
 
   /**
@@ -164,8 +183,9 @@ public final class RequestTemplate implements Serializable {
    * @param variables containing the variable values to use when resolving expressions.
    * @return a new Request Template with all of the variables resolved.
    */
+  //解析数据，创建模板
   public RequestTemplate resolve(Map<String, ?> variables) {
-
+    // 根据参数下标，获取到当前参数对象
     StringBuilder uri = new StringBuilder();
 
     /* create a new template form this one, but explicitly */

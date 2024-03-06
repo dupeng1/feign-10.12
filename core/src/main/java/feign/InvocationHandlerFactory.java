@@ -20,6 +20,10 @@ import java.util.Map;
 /**
  * Controls reflective method dispatch.
  */
+
+/**
+ * InvocationHandler工厂，每个FeignClient产生有一个InvocationHandler
+ */
 public interface InvocationHandlerFactory {
 
   InvocationHandler create(Target target, Map<Method, MethodHandler> dispatch);

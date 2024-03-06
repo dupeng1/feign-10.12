@@ -213,6 +213,9 @@ public class ReflectiveFeign extends Feign {
     }
   }
 
+  /**
+   * 除表单、请求体body之外的处理实例
+   */
   private static class BuildTemplateByResolvingArgs implements RequestTemplate.Factory {
 
     private final QueryMapEncoder queryMapEncoder;
@@ -220,6 +223,7 @@ public class ReflectiveFeign extends Feign {
     protected final MethodMetadata metadata;
     //目标对象
     protected final Target<?> target;
+    //@Param参数中的Expander，key是哪个参数的序号
     private final Map<Integer, Expander> indexToExpander = new LinkedHashMap<Integer, Expander>();
 
     private BuildTemplateByResolvingArgs(MethodMetadata metadata, QueryMapEncoder queryMapEncoder,
@@ -227,6 +231,10 @@ public class ReflectiveFeign extends Feign {
       this.metadata = metadata;
       this.target = target;
       this.queryMapEncoder = queryMapEncoder;
+      //找到MD中是否有expander信息，有就倒腾过来。
+      //注意这里其实一开始是没有的。因为在Contract的解析逻辑中我们是把Expander的信息放在了indexToExpanderClass里面，没有去实例化那些Expander类。
+      //只有重写了Contract逻辑，调用了feign.MethodMetadata#indexToExpander(java.util.Map<java.lang.Integer,feign.Param.Expander>)方法，动态注入了Expander实例的情况才会使用。
+      //这样原本的indexToExpanderClass就没用了，因为可以看到代码直接返回了。
       if (metadata.indexToExpander() != null) {
         indexToExpander.putAll(metadata.indexToExpander());
         return;
@@ -234,6 +242,7 @@ public class ReflectiveFeign extends Feign {
       if (metadata.indexToExpanderClass().isEmpty()) {
         return;
       }
+      //如果MD中填充了indexToExpanderClass相关信息，将Expander实例化，放入工厂类自己的indexToExpander待用。
       for (Entry<Integer, Class<? extends Expander>> indexToExpanderClass : metadata
           .indexToExpanderClass().entrySet()) {
         try {
@@ -249,13 +258,18 @@ public class ReflectiveFeign extends Feign {
 
     @Override
     public RequestTemplate create(Object[] argv) {
+      //将md中原本的RequestTemplate取出，创建新的RequestTemplate，以供修改，咋改呢？
       RequestTemplate mutable = RequestTemplate.from(metadata.template());
+      // 设置目标对象
       mutable.feignTarget(target);
+      //处理URI类型参数
       if (metadata.urlIndex() != null) {
+        // 有URL 则设置请求的目标（地址）
         int urlIndex = metadata.urlIndex();
         checkArgument(argv[urlIndex] != null, "URI parameter %s was null", urlIndex);
         mutable.target(String.valueOf(argv[urlIndex]));
       }
+      //获取@Param参数，替换模板，处理参数
       Map<String, Object> varBuilder = new LinkedHashMap<String, Object>();
       for (Entry<Integer, Collection<String>> entry : metadata.indexToName().entrySet()) {
         int i = entry.getKey();
@@ -264,21 +278,26 @@ public class ReflectiveFeign extends Feign {
           if (indexToExpander.containsKey(i)) {
             value = expandElements(indexToExpander.get(i), value);
           }
+          // 循环，将参数名，参数类型解析为Map ,全部解析完后，还是会回到 this.resolve(argv, mutable, varBuilder)
           for (String name : entry.getValue()) {
             varBuilder.put(name, value);
           }
         }
       }
-
+      // 调用RequestTemplate 的解析方法
       RequestTemplate template = resolve(argv, mutable, varBuilder);
+      //处理@QueryMap参数
       if (metadata.queryMapIndex() != null) {
         // add query map parameters after initial resolve so that they take
         // precedence over any predefined values
+        // 获取@SpringQueryMap标识的参数对象
         Object value = argv[metadata.queryMapIndex()];
+        // 转对象为MAP
         Map<String, Object> queryMap = toQueryMap(value);
+        // 添加请求参数
         template = addQueryMapQueryParameters(queryMap, template);
       }
-
+      // 处理@HeaderMap参数
       if (metadata.headerMapIndex() != null) {
         template =
             addHeaderMapHeaders((Map<String, Object>) argv[metadata.headerMapIndex()], template);
@@ -315,6 +334,7 @@ public class ReflectiveFeign extends Feign {
       return values;
     }
 
+    //给RequestTemplate添加消息头
     @SuppressWarnings("unchecked")
     private RequestTemplate addHeaderMapHeaders(Map<String, Object> headerMap,
                                                 RequestTemplate mutable) {
@@ -337,6 +357,7 @@ public class ReflectiveFeign extends Feign {
       return mutable;
     }
 
+    //给RequestTemplate添加请求参数
     @SuppressWarnings("unchecked")
     private RequestTemplate addQueryMapQueryParameters(Map<String, Object> queryMap,
                                                        RequestTemplate mutable) {
@@ -375,6 +396,9 @@ public class ReflectiveFeign extends Feign {
     }
   }
 
+  /**
+   * 表单处理实例
+   */
   private static class BuildFormEncodedTemplateFromArgs extends BuildTemplateByResolvingArgs {
 
     //请求参数编码
@@ -407,6 +431,9 @@ public class ReflectiveFeign extends Feign {
     }
   }
 
+  /**
+   * 包含请求体body处理实例
+   */
   private static class BuildEncodedTemplateFromArgs extends BuildTemplateByResolvingArgs {
 
     private final Encoder encoder;

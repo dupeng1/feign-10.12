@@ -32,6 +32,10 @@ import java.util.*;
  * order of included query parameters not guaranteed, and as usual, if any value is null, it will be
  * left out
  */
+
+/**
+ * 查询映射将使用的POJO可访问的getter属性作为查询参数生成的名字
+ */
 public class BeanQueryMapEncoder implements QueryMapEncoder {
   private final Map<Class<?>, ObjectParamMetadata> classToMetadata =
       new HashMap<Class<?>, ObjectParamMetadata>();

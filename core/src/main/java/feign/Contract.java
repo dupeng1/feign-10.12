@@ -269,6 +269,7 @@ public interface Contract {
         final Map<String, Collection<String>> headers = toMap(headersOnType);
         headers.putAll(data.template().headers());
         data.template().headers(null); // to clear
+        //添加请求模板header
         data.template().headers(headers);
       });
       //@RequestLine    方法上
@@ -286,7 +287,9 @@ public interface Contract {
               "RequestLine annotation didn't start with an HTTP verb on method %s",
               data.configKey()));
         } else {
+          //添加请求模板method
           data.template().method(HttpMethod.valueOf(requestLineMatcher.group(1)));
+          //添加请求模板uri
           data.template().uri(requestLineMatcher.group(2));
         }
         data.template().decodeSlash(ann.decodeSlash());
@@ -299,8 +302,10 @@ public interface Contract {
         checkState(emptyToNull(body) != null, "Body annotation was empty on method %s.",
             data.configKey());
         if (body.indexOf('{') == -1) {
+          //添加请求模板body
           data.template().body(body);
         } else {
+          //添加请求模板body
           data.template().bodyTemplate(body);
         }
       });
@@ -309,6 +314,7 @@ public interface Contract {
         final String[] headersOnMethod = header.value();
         checkState(headersOnMethod.length > 0, "Headers annotation was empty on method %s.",
             data.configKey());
+        //添加请求模板header
         data.template().headers(toMap(headersOnMethod));
       });
       //@Param  方法参数
@@ -326,12 +332,14 @@ public interface Contract {
         }
         checkState(emptyToNull(name) != null, "Param annotation was empty on param %s.",
             paramIndex);
+        //添加参数索引和参数名关系
         nameParam(data, name, paramIndex);
         final Class<? extends Param.Expander> expander = paramAnnotation.expander();
         if (expander != Param.ToStringExpander.class) {
           data.indexToExpanderClass().put(paramIndex, expander);
         }
         if (!data.template().hasRequestVariable(name)) {
+          //添加form参数
           data.formParams().add(name);
         }
       });
@@ -349,6 +357,7 @@ public interface Contract {
       super.registerParameterAnnotation(HeaderMap.class, (queryMap, data, paramIndex) -> {
         checkState(data.headerMapIndex() == null,
             "HeaderMap annotation was present on multiple parameters.");
+        //添加请求header参数索引
         data.headerMapIndex(paramIndex);
       });
     }

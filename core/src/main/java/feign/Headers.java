@@ -70,6 +70,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * ...
  * </pre>
  */
+//方法上或类上Headers注解
 @Target({METHOD, TYPE})
 @Retention(RUNTIME)
 public @interface Headers {

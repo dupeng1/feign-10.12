@@ -28,6 +28,9 @@ import java.util.stream.Collectors;
  * order of included query parameters not guaranteed, and as usual, if any value is null, it will be
  * left out
  */
+/**
+ * 查询映射将使用的POJO的属性
+ */
 public class FieldQueryMapEncoder implements QueryMapEncoder {
 
   private final Map<Class<?>, ObjectParamMetadata> classToMetadata =

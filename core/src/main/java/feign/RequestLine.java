@@ -23,6 +23,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * <a href="https://tools.ietf.org/html/rfc6570">RFC 6570</a>. Support is limited to Simple String
  * expansion and Reserved Expansion (Level 1 and Level 2) expressions.
  */
+//方法上RequestLine注解
 @java.lang.annotation.Target(METHOD)
 @Retention(RUNTIME)
 public @interface RequestLine {

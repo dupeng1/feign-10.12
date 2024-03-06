@@ -34,6 +34,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  *
  * @see RequestTemplate#expand(String, Map)
  */
+//方法上Body注解
 @Target(METHOD)
 @Retention(RUNTIME)
 public @interface Body {

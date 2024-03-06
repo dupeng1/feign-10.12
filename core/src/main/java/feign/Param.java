@@ -21,6 +21,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * A named template parameter applied to {@link Headers}, {@linkplain RequestLine},
  * {@linkplain Body}, POJO fields or beans properties when it expanding
  */
+//参数上Param注解
 @Retention(RUNTIME)
 @java.lang.annotation.Target({PARAMETER, FIELD, METHOD})
 public @interface Param {

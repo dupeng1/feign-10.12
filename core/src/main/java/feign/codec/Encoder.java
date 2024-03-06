@@ -63,6 +63,10 @@ import static java.lang.String.format;
  * Session login(@Param(&quot;username&quot;) String username, @Param(&quot;password&quot;) String password);
  * </pre>
  */
+
+/**
+ * 将对象编码到Http请求体中，当参数没有标注@Param注解时候，编码器就会生效
+ */
 public interface Encoder {
   /** Type literal for {@code Map<String, ?>}, indicating the object to encode is a form. */
   Type MAP_STRING_WILDCARD = Util.MAP_STRING_WILDCARD;
@@ -78,8 +82,8 @@ public interface Encoder {
    */
   /**
    * 编码
-   * @param object  要编码的对象
-   * @param bodyType  对象类型
+   * @param object  需要被编码的对象（有可能是POJO，有可能是字符串）
+   * @param bodyType  body类对象类型
    * @param template  请求模板对象
    * @throws EncodeException
    */

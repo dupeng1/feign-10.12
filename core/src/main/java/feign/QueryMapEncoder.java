@@ -24,6 +24,10 @@ import java.util.Map;
  * @see BeanQueryMapEncoder
  *
  */
+
+/**
+ * QueryMap的Encoder，将对象编码成Map
+ */
 public interface QueryMapEncoder {
 
   /**
