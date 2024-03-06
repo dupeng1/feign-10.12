@@ -112,13 +112,28 @@ public abstract class Feign {
         new ArrayList<RequestInterceptor>();
     private Logger.Level logLevel = Logger.Level.NONE;
     private Contract contract = new Contract.Default();
+    //客户端
     private Client client = new Client.Default(null, null);
+    //重试机制
+    //Feign.Builder builder = Feign.builder();
+    //builder.retryer(new CustomRetryer());
     private Retryer retryer = new Retryer.Default();
+    //日志
     private Logger logger = new NoOpLogger();
+    //请求参数编码器，Feign在发送请求时能够对请求参数进行编码
+    //MyApi myApi = Feign.builder()
+    //                .encoder(new CustomEncoder(objectMapper))
+    //                .target(UserService.class, "http://localhost:8080");
     private Encoder encoder = new Encoder.Default();
+    //解码，响应结果解码器
+    //MyApi myApi = Feign.builder()
+    //                   .decoder(myDecoder)
+    //                   .target(MyApi.class, "http://localhost:8080");
     private Decoder decoder = new Decoder.Default();
+    //
     private QueryMapEncoder queryMapEncoder = new FieldQueryMapEncoder();
     private ErrorDecoder errorDecoder = new ErrorDecoder.Default();
+    //请求配置项 Feign.builder().options(new Request.Options(5000, 10000));
     private Options options = new Options();
     private InvocationHandlerFactory invocationHandlerFactory =
         new InvocationHandlerFactory.Default();
@@ -128,6 +143,7 @@ public abstract class Feign {
     private boolean forceDecoding = false;
     private List<Capability> capabilities = new ArrayList<>();
 
+    //设置日志输出级别
     public Builder logLevel(Logger.Level logLevel) {
       this.logLevel = logLevel;
       return this;
@@ -143,21 +159,25 @@ public abstract class Feign {
       return this;
     }
 
+    //设置重试机制
     public Builder retryer(Retryer retryer) {
       this.retryer = retryer;
       return this;
     }
 
+    //设置日志输出器
     public Builder logger(Logger logger) {
       this.logger = logger;
       return this;
     }
 
+    //设置请求参数编码器
     public Builder encoder(Encoder encoder) {
       this.encoder = encoder;
       return this;
     }
 
+    //设置响应结果解码器
     public Builder decoder(Decoder decoder) {
       this.decoder = decoder;
       return this;
@@ -193,6 +213,7 @@ public abstract class Feign {
      *
      * @since 8.12
      */
+    //设置当响应状态码为404时，是否抛出异常
     public Builder decode404() {
       this.decode404 = true;
       return this;
@@ -203,6 +224,7 @@ public abstract class Feign {
       return this;
     }
 
+    //设置请求配置项
     public Builder options(Options options) {
       this.options = options;
       return this;
@@ -220,6 +242,7 @@ public abstract class Feign {
      * Sets the full set of request interceptors for the builder, overwriting any previous
      * interceptors.
      */
+    //设置请求拦截器
     public Builder requestInterceptors(Iterable<RequestInterceptor> requestInterceptors) {
       this.requestInterceptors.clear();
       for (RequestInterceptor requestInterceptor : requestInterceptors) {
@@ -272,10 +295,12 @@ public abstract class Feign {
       return this;
     }
 
+    //设置要调用的API接口类型和URL地址
     public <T> T target(Class<T> apiType, String url) {
       return target(new HardCodedTarget<T>(apiType, url));
     }
 
+    //设置目标对象
     public <T> T target(Target<T> target) {
       return build().newInstance(target);
     }
@@ -291,16 +316,22 @@ public abstract class Feign {
       Options options = Capability.enrich(this.options, capabilities);
       Encoder encoder = Capability.enrich(this.encoder, capabilities);
       Decoder decoder = Capability.enrich(this.decoder, capabilities);
+      // 1.1 创建InvocationHandlerFactory，生产InvocationHandler，实现是ReflectiveFeign.FeignInvocationHandler
       InvocationHandlerFactory invocationHandlerFactory =
           Capability.enrich(this.invocationHandlerFactory, capabilities);
       QueryMapEncoder queryMapEncoder = Capability.enrich(this.queryMapEncoder, capabilities);
-
+      // 1.2、创建SynchronousMethodHandler.Factory，生产SynchronousMethodHandler
       SynchronousMethodHandler.Factory synchronousMethodHandlerFactory =
           new SynchronousMethodHandler.Factory(client, retryer, requestInterceptors, logger,
               logLevel, decode404, closeAfterDecode, propagationPolicy, forceDecoding);
+      // 1.3、创建ParseHandlersByName，将当前builder的参数赋给ParseHandlersByName
       ParseHandlersByName handlersByName =
           new ParseHandlersByName(contract, options, encoder, decoder, queryMapEncoder,
               errorDecoder, synchronousMethodHandlerFactory);
+      // 1.4、创建ReflectiveFeign，用来生产代理
+      //handlersByName主要用来解析方法成SynchronousMethodHandler
+      //invocationHandlerFactory主要用来生产InvocationHandler，包含了上面的SynchronousMethodHandler
+      //最终InvocationHandler是ReflectiveFeign.FeignInvocationHandler
       return new ReflectiveFeign(handlersByName, invocationHandlerFactory, queryMapEncoder);
     }
   }

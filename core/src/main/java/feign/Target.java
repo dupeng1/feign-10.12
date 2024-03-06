@@ -27,6 +27,11 @@ import static feign.Util.emptyToNull;
  *
  * @param <T> type of the interface this target applies to.
  */
+
+/**
+ * 用于定义Feign客户端的目标对象的基本信息，例如请求协议、请求地址、请求端口等
+ * @param <T>
+ */
 public interface Target<T> {
 
   /* The type of the interface this target applies to. ex. {@code Route53}. */
@@ -63,6 +68,7 @@ public interface Target<T> {
    */
   public Request apply(RequestTemplate input);
 
+  //设置目标对象
   public static class HardCodedTarget<T> implements Target<T> {
 
     private final Class<T> type;

@@ -89,6 +89,7 @@ public class ReflectiveFeign extends Feign {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+      //重写几个方法
       if ("equals".equals(method.getName())) {
         try {
           Object otherHandler =
@@ -102,7 +103,7 @@ public class ReflectiveFeign extends Feign {
       } else if ("toString".equals(method.getName())) {
         return toString();
       }
-
+        //获取SynchronousMethodHandler执行
       return dispatch.get(method).invoke(args);
     }
 
@@ -207,14 +208,17 @@ public class ReflectiveFeign extends Feign {
         }
       }
       return result;
+      //ParseHandlersByName类其实就类似于一个工具类，里面调用了contract接口的解析获得了MethodMetadata列表
+      //，然后在将方法包装成MethodHandler，最后根据configKey返回一个Map
     }
   }
 
   private static class BuildTemplateByResolvingArgs implements RequestTemplate.Factory {
 
     private final QueryMapEncoder queryMapEncoder;
-
+    //方法元数据
     protected final MethodMetadata metadata;
+    //目标对象
     protected final Target<?> target;
     private final Map<Integer, Expander> indexToExpander = new LinkedHashMap<Integer, Expander>();
 
@@ -373,6 +377,7 @@ public class ReflectiveFeign extends Feign {
 
   private static class BuildFormEncodedTemplateFromArgs extends BuildTemplateByResolvingArgs {
 
+    //请求参数编码
     private final Encoder encoder;
 
     private BuildFormEncodedTemplateFromArgs(MethodMetadata metadata, Encoder encoder,
@@ -416,9 +421,11 @@ public class ReflectiveFeign extends Feign {
     protected RequestTemplate resolve(Object[] argv,
                                       RequestTemplate mutable,
                                       Map<String, Object> variables) {
+      // 请求参数=》 order 对象
       Object body = argv[metadata.bodyIndex()];
       checkArgument(body != null, "Body parameter %s was null", metadata.bodyIndex());
       try {
+        // 编码器编码
         encoder.encode(body, metadata.bodyType(), mutable);
       } catch (EncodeException e) {
         throw e;

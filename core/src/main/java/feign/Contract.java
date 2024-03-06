@@ -26,12 +26,21 @@ import feign.Request.HttpMethod;
 /**
  * Defines what annotations and values are valid on interfaces.
  */
+
+/**
+ * 意为契约，实际就是Feign 中的接口解析器，会解析接口方法上的注解为元数据，以此来创建请求模板及方法执行器。
+ */
 public interface Contract {
 
   /**
    * Called to parse the methods in the class that are linked to HTTP requests.
    *
    * @param targetType {@link feign.Target#type() type} of the Feign interface.
+   */
+  /**
+   * 解析类中的方法，每个方法解析为MethodMetadata
+   * @param targetType  开发者编写的接口的元信息
+   * @return  每个方法解析为一个MethodMetadata对象
    */
   List<MethodMetadata> parseAndValidateMetadata(Class<?> targetType);
 
@@ -41,24 +50,31 @@ public interface Contract {
      * @param targetType {@link feign.Target#type() type} of the Feign interface.
      * @see #parseAndValidateMetadata(Class)
      */
+    // 类型class信息传入，该为开发者编写的接口class信息。
     @Override
     public List<MethodMetadata> parseAndValidateMetadata(Class<?> targetType) {
+      //接口上不能有泛型变量
       checkState(targetType.getTypeParameters().length == 0, "Parameterized types unsupported: %s",
           targetType.getSimpleName());
+      //接口最多有一个父接口
       checkState(targetType.getInterfaces().length <= 1, "Only single inheritance supported: %s",
           targetType.getSimpleName());
       if (targetType.getInterfaces().length == 1) {
+        //父接口存在时，父接口的父接口不能存在
         checkState(targetType.getInterfaces()[0].getInterfaces().length == 0,
             "Only single-level inheritance supported: %s",
             targetType.getSimpleName());
       }
       final Map<String, MethodMetadata> result = new LinkedHashMap<String, MethodMetadata>();
+      //遍历接口方法
       for (final Method method : targetType.getMethods()) {
+        //过滤掉Object的方法、static方法、default方法
         if (method.getDeclaringClass() == Object.class ||
             (method.getModifiers() & Modifier.STATIC) != 0 ||
             Util.isDefault(method)) {
           continue;
         }
+        //解析出每个方法的元数据 MethodMetadata
         final MethodMetadata metadata = parseAndValidateMetadata(targetType, method);
         checkState(!result.containsKey(metadata.configKey()), "Overrides unsupported: %s",
             metadata.configKey());
@@ -78,6 +94,12 @@ public interface Contract {
     /**
      * Called indirectly by {@link #parseAndValidateMetadata(Class)}.
      */
+    /**
+     * 解析接口类中的方法
+     * @param targetType  接口类
+     * @param method  接口类中的方法
+     * @return
+     */
     protected MethodMetadata parseAndValidateMetadata(Class<?> targetType, Method method) {
       final MethodMetadata data = new MethodMetadata();
       data.targetType(targetType);
@@ -86,12 +108,15 @@ public interface Contract {
       data.configKey(Feign.configKey(targetType, method));
 
       if (targetType.getInterfaces().length == 1) {
+        //处理父接口上的注解，留给子类实现
         processAnnotationOnClass(data, targetType.getInterfaces()[0]);
       }
+      //处理当前接口上的注解，留给子类实现
       processAnnotationOnClass(data, targetType);
 
 
       for (final Annotation methodAnnotation : method.getAnnotations()) {
+        //处理接口方法上的注解，留给子类实现
         processAnnotationOnMethod(data, methodAnnotation, method);
       }
       if (data.isIgnored()) {
@@ -100,21 +125,23 @@ public interface Contract {
       checkState(data.template().method() != null,
           "Method %s not annotated with HTTP method type (ex. GET, POST)%s",
           data.configKey(), data.warnings());
+      //方法参数类型
       final Class<?>[] parameterTypes = method.getParameterTypes();
       final Type[] genericParameterTypes = method.getGenericParameterTypes();
-
+      //参数注解
       final Annotation[][] parameterAnnotations = method.getParameterAnnotations();
       final int count = parameterAnnotations.length;
       for (int i = 0; i < count; i++) {
         boolean isHttpAnnotation = false;
         if (parameterAnnotations[i] != null) {
+          //http相关的注解，留给子类实现
           isHttpAnnotation = processAnnotationsOnParameter(data, parameterAnnotations[i], i);
         }
 
         if (isHttpAnnotation) {
           data.ignoreParamater(i);
         }
-
+        //参数类型是否是URI，有了就使用，没有就使用默认的
         if (parameterTypes[i] == URI.class) {
           data.urlIndex(i);
         } else if (!isHttpAnnotation && parameterTypes[i] != Request.Options.class) {
@@ -188,6 +215,7 @@ public interface Contract {
      * @param data metadata collected so far relating to the current java method.
      * @param clz the class to process
      */
+    /** * 解析类上的注解 */
     protected abstract void processAnnotationOnClass(MethodMetadata data, Class<?> clz);
 
     /**
@@ -195,6 +223,7 @@ public interface Contract {
      * @param annotation annotations present on the current method annotation.
      * @param method method currently being processed.
      */
+    /** * 解析方法上的注解 */
     protected abstract void processAnnotationOnMethod(MethodMetadata data,
                                                       Annotation annotation,
                                                       Method method);
@@ -207,6 +236,7 @@ public interface Contract {
      * @return true if you called {@link #nameParam(MethodMetadata, String, int)} after finding an
      *         http-relevant annotation.
      */
+    /** * 解析参数上的注解 */
     protected abstract boolean processAnnotationsOnParameter(MethodMetadata data,
                                                              Annotation[] annotations,
                                                              int paramIndex);
@@ -227,6 +257,11 @@ public interface Contract {
     static final Pattern REQUEST_LINE_PATTERN = Pattern.compile("^([A-Z]+)[ ]*(.*)$");
 
     public Default() {
+      //  @Headers	 类上或者方法上
+      // 定义头部模板变量，使用@Param 注解提供参数值的注入。
+      // 如果该注解添加在接口类上，则所有的请求都会携带对应的Header信息；如果在方法上，则只会添加到对应的方法请求上
+
+      //类上支持 Headers 注解，当类上出现该注解
       super.registerClassAnnotation(Headers.class, (header, data) -> {
         final String[] headersOnType = header.value();
         checkState(headersOnType.length > 0, "Headers annotation was empty on type %s.",
@@ -236,6 +271,10 @@ public interface Contract {
         data.template().headers(null); // to clear
         data.template().headers(headers);
       });
+      //@RequestLine    方法上
+      //定义HttpMethod 和 UriTemplate. UriTemplate 中使用{} 包裹的表达式，可以通过在方法参数上使用@Param 自动注入
+
+      //方法上支持 RequestLine 注解
       super.registerMethodAnnotation(RequestLine.class, (ann, data) -> {
         final String requestLine = ann.value();
         checkState(emptyToNull(requestLine) != null,
@@ -254,6 +293,7 @@ public interface Contract {
         data.template()
             .collectionFormat(ann.collectionFormat());
       });
+      //方法上支持 Body 注解
       super.registerMethodAnnotation(Body.class, (ann, data) -> {
         final String body = ann.value();
         checkState(emptyToNull(body) != null, "Body annotation was empty on method %s.",
@@ -264,12 +304,17 @@ public interface Contract {
           data.template().bodyTemplate(body);
         }
       });
+      //方法上支持 Headers 注解
       super.registerMethodAnnotation(Headers.class, (header, data) -> {
         final String[] headersOnMethod = header.value();
         checkState(headersOnMethod.length > 0, "Headers annotation was empty on method %s.",
             data.configKey());
         data.template().headers(toMap(headersOnMethod));
       });
+      //@Param  方法参数
+      //定义模板变量，模板变量的值可以使用名称的方式使用模板注入解析
+
+      //参数上支持 Param 注解
       super.registerParameterAnnotation(Param.class, (paramAnnotation, data, paramIndex) -> {
         final String annotationName = paramAnnotation.value();
         final Parameter parameter = data.method().getParameters()[paramIndex];
@@ -290,12 +335,17 @@ public interface Contract {
           data.formParams().add(name);
         }
       });
+      //@QueryMap	方法参数
+      //定义一个键值对或者 pojo，参数值将会被转换成URL上的 query 字符串上
+
+      //参数上支持 QueryMap 注解
       super.registerParameterAnnotation(QueryMap.class, (queryMap, data, paramIndex) -> {
         checkState(data.queryMapIndex() == null,
             "QueryMap annotation was present on multiple parameters.");
         data.queryMapIndex(paramIndex);
         data.queryMapEncoded(queryMap.encoded());
       });
+      //参数上支持 HeaderMap 注解
       super.registerParameterAnnotation(HeaderMap.class, (queryMap, data, paramIndex) -> {
         checkState(data.headerMapIndex() == null,
             "HeaderMap annotation was present on multiple parameters.");

@@ -189,10 +189,15 @@ final class SynchronousMethodHandler implements MethodHandler {
     Factory(Client client, Retryer retryer, List<RequestInterceptor> requestInterceptors,
         Logger logger, Logger.Level logLevel, boolean decode404, boolean closeAfterDecode,
         ExceptionPropagationPolicy propagationPolicy, boolean forceDecoding) {
+      //客户端
       this.client = checkNotNull(client, "client");
+      //重试
       this.retryer = checkNotNull(retryer, "retryer");
+      //拦截器
       this.requestInterceptors = checkNotNull(requestInterceptors, "requestInterceptors");
+      //日志
       this.logger = checkNotNull(logger, "logger");
+      //日志级别
       this.logLevel = checkNotNull(logLevel, "logLevel");
       this.decode404 = decode404;
       this.closeAfterDecode = closeAfterDecode;
@@ -200,8 +205,8 @@ final class SynchronousMethodHandler implements MethodHandler {
       this.forceDecoding = forceDecoding;
     }
 
-    public MethodHandler create(Target<?> target,
-                                MethodMetadata md,
+    public MethodHandler create(Target<?> target,//目标对象
+                                MethodMetadata md,//方法元数据
                                 RequestTemplate.Factory buildTemplateFromArgs,
                                 Options options,
                                 Decoder decoder,

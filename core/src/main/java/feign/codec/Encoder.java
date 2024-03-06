@@ -76,6 +76,13 @@ public interface Encoder {
    * @param template the request template to populate.
    * @throws EncodeException when encoding failed due to a checked exception.
    */
+  /**
+   * 编码
+   * @param object  要编码的对象
+   * @param bodyType  对象类型
+   * @param template  请求模板对象
+   * @throws EncodeException
+   */
   void encode(Object object, Type bodyType, RequestTemplate template) throws EncodeException;
 
   /**
@@ -85,11 +92,16 @@ public interface Encoder {
 
     @Override
     public void encode(Object object, Type bodyType, RequestTemplate template) {
+      // String类型，直接调用toString()，并设置到请求模板的body 中
       if (bodyType == String.class) {
         template.body(object.toString());
-      } else if (bodyType == byte[].class) {
+      }
+      // 二进制，塞入二进制
+      else if (bodyType == byte[].class) {
         template.body((byte[]) object, null);
-      } else if (object != null) {
+      }
+      // 不是NULL ，爆出编码异常
+      else if (object != null) {
         throw new EncodeException(
             format("%s is not a type supported by this encoder.", object.getClass()));
       }

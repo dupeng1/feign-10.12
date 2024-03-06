@@ -75,18 +75,22 @@ public interface Decoder {
    * @throws DecodeException when decoding failed due to a checked exception besides IOException.
    * @throws FeignException when decoding succeeds, but conveys the operation failed.
    */
+  // 解码，参数为响应对象，及其类型
   Object decode(Response response, Type type) throws IOException, DecodeException, FeignException;
 
   /** Default implementation of {@code Decoder}. */
   public class Default extends StringDecoder {
-
+    // 解码
     @Override
     public Object decode(Response response, Type type) throws IOException {
+      // 不是404 和204
       if (response.status() == 404 || response.status() == 204)
         return Util.emptyValueOf(type);
       if (response.body() == null)
+        // 响应体为null  直接返回null
         return null;
       if (byte[].class.equals(type)) {
+        // 判断返回类型是不是二进制，是的话直接返回流，不是解析为String
         return Util.toByteArray(response.body().asInputStream());
       }
       return super.decode(response, type);

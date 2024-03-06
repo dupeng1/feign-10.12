@@ -20,29 +20,47 @@ import java.util.*;
 import java.util.stream.Collectors;
 import feign.Param.Expander;
 
+/**
+ * 意为方法元数据，可以理解为一个Java Bean，Feign 会解析接口的每个方法，封装为MethodMetadata，并依据这个创建方法处理器
+ */
 public final class MethodMetadata implements Serializable {
 
   private static final long serialVersionUID = 1L;
+  // 每个方法的唯一标识。键名=》OrderFeign#post(Order)
   private String configKey;
+  // 方法返回类型=》Order
   private transient Type returnType;
+  // 如果这个方法参数有URI类型的，记住这个索引
   private Integer urlIndex;
+  // 记录方法体的索引值
   private Integer bodyIndex;
+  // head中的数据使用map封装，记录索引值
   private Integer headerMapIndex;
+  // 查询数据使用map封装，记录索引值
   private Integer queryMapIndex;
+  //是否编码查询map
   private boolean queryMapEncoded;
+  // 请求体类型
   private transient Type bodyType;
+  // 请求数据模板。包含请求方法，请求参数，请求体和url
   private final RequestTemplate template = new RequestTemplate();
   private final List<String> formParams = new ArrayList<String>();
+  // 每个方法参数的名称，key:参数的索引位置；value:注解中的value值
   private final Map<Integer, Collection<String>> indexToName =
       new LinkedHashMap<Integer, Collection<String>>();
+  // Expander类型，传入一个Object对象，返回一个String类型。。
   private final Map<Integer, Class<? extends Expander>> indexToExpanderClass =
       new LinkedHashMap<Integer, Class<? extends Expander>>();
   private final Map<Integer, Boolean> indexToEncoded = new LinkedHashMap<Integer, Boolean>();
   private transient Map<Integer, Expander> indexToExpander;
   private BitSet parameterToIgnore = new BitSet();
+  // 是否忽略该方法
   private boolean ignored;
+  // 需要代理的接口类型
   private transient Class<?> targetType;
+  // 接口中的方法 =》public abstract pojo.Order account.OrderFeign.post(pojo.Order)
   private transient Method method;
+  // 警告级别
   private transient final List<String> warnings = new ArrayList<>();
 
   MethodMetadata() {

@@ -19,6 +19,9 @@ import feign.Response;
 import feign.Util;
 import static java.lang.String.format;
 
+/**
+ * 会判断是否字符串类型，然后解析为String，如果不是则会抛出解析异常
+ */
 public class StringDecoder implements Decoder {
 
   @Override
